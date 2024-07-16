@@ -1,0 +1,338 @@
+一、（ultralytic）YOLOV8项目部署
+
+github链接：https://github.com/ultralytics/ultralytics
+
+
+
+git拉取项目：
+
+git clone https://github.com/ultralytics/ultralytics.git
+
+
+
+二、cuda、cudnn、Pytorch等环境安装与卸载
+
+
+
+首先查看pytorch支持的最高版本
+
+PyTorch
+
+https://pytorch.org/
+
+然后查看N卡系统支持最高的版本
+
+然后权衡下载支持最高版本的CUDA和cuDNN
+
+CUDA工具包
+
+https://developer.nvidia.cn/zh-cn/cuda-toolkit
+
+cuDNN
+
+https://developer.nvidia.com/rdp/cudnn-download
+
+配置对应的环境变量
+
+nvcc -V：查看版本CUDA
+
+安装项目依赖
+
+pip install -e ultralytics
+
+pip install ultralytics
+
+pip install yolo
+
+
+
+卸载项目依赖为你安装CPU版本pytorch，打开pytorch官网，使用对应命令下载GPU版本
+
+
+
+三、YOLOV8的简单讲解与推理使用
+
+推理：
+
+yolo task=detect mode=predict model=yolov8n.pt conf=0.25 source='ultralytics/assets/bus.jpg'
+
+训练：
+
+yolo task=detect mode=train model=datasets/yolov8.yaml data=datasets/data.yaml epochs=100 imgsz=640 resume=True workers=2
+
+yolo task=detect mode=train model=runs/detect/train10/weights/last.pt data=datasets/data.yaml epochs=5000 imgsz=1080 resume=True workers=4 device=cuda  batch=32
+
+
+四、如何制作自定义数据集并训练
+
+1.自定义数据集结构讲解与制作
+
+
+
+数据结构：
+
+datasets
+
+├─ data.yaml
+
+├─ test
+
+│    ├─ images
+
+│    │    └─ ······
+
+│    └─  labels
+
+│       └─ ······
+
+├─ train
+
+│    ├─ images
+
+│    │    └─ ······
+
+│    └─  labels
+
+│       └─ ······
+
+├─ valid
+
+│    ├─ images
+
+│    │    └─ ······
+
+│    └─  labels
+
+│       └─ ······
+
+├─ data.yaml
+
+└─ yolov8n.yaml
+
+
+
+2.YOLO CLI的简单介绍
+
+3.如何中断续训
+
+中断续训：
+
+yolo task=detect mode=train model=runs/detect/train12/weights/last.pt epochs=500 imgsz=640 resume=True workers=2 lr0=0.5 lrf=0.01 momentum=0.8 weight_decay=0.0005
+
+
+
+yolo task=detect mode=train model=runs/detect/train10/weights/last.pt data=datasets/data.yaml epochs=5000 imgsz=1080 resume=True workers=4 batch=32 lr0=0.5 lrf=0.01 momentum=0.8 weight_decay=0.0005 device=cuda
+
+
+
+其他：
+
+
+
+cmd切换到对应的虚拟环境
+
+conda info -e
+
+activate ultralytics
+
+
+
+
+
+test.py代码（查看pytorch是否支持GPU）：
+
+#输入库
+
+import torch
+
+#查看版本
+
+print(torch.__version__)
+
+#查看gpu是否可用
+
+print(torch.cuda.is_available())
+
+#返回设备gpu个数
+
+print(torch.cuda.device_count())
+
+# 查看对应CUDA的版本号
+
+print(torch.backends.cudnn.version())
+
+print(torch.version.cuda)
+
+#退出python
+
+quit()
+
+
+
+
+
+按比例移动制作自定义数据集代码：
+
+import os
+
+import random
+
+from tqdm import tqdm
+
+
+
+# 指定 images 文件夹路径
+
+image_dir = "D:/zm/coco128/images"
+
+# 指定 labels 文件夹路径
+
+label_dir = "D:/zm/coco128/labels"
+
+
+
+# 创建一个空列表来存储有效图片的路径
+
+valid_images = []
+
+# 创建一个空列表来存储有效 label 的路径
+
+valid_labels = []
+
+
+
+# 遍历 images 文件夹下的所有图片
+
+for image_name in os.listdir(image_dir):
+
+    # 获取图片的完整路径
+
+    image_path = os.path.join(image_dir, image_name)
+
+    # 获取图片文件的扩展名
+
+    ext = os.path.splitext(image_name)[-1]
+
+    # 根据扩展名替换成对应的 label 文件名
+
+    label_name = image_name.replace(ext, ".txt")
+
+    # 获取对应 label 的完整路径
+
+    label_path = os.path.join(label_dir, label_name)
+
+    # 判断 label 是否存在
+
+    if not os.path.exists(label_path):
+
+        # 删除图片
+
+        os.remove(image_path)
+
+        print("deleted:", image_path)
+
+    else:
+
+        # 将图片路径添加到列表中
+
+        valid_images.append(image_path)
+
+        # 将label路径添加到列表中
+
+        valid_labels.append(label_path)
+
+        # print("valid:", image_path, label_path)
+
+
+
+# 遍历每个有效图片路径
+
+for i in tqdm(range(len(valid_images))):
+
+    image_path = valid_images[i]
+
+    label_path = valid_labels[i]
+
+    # 随机生成一个概率
+
+    r = random.random()
+
+    # 判断图片应该移动到哪个文件夹
+
+    # train：valid：test = 7:3:1
+
+    if r < 0.1:
+
+        # 移动到 test 文件夹
+
+        destination = "D:/sj/project/python/ultralytics/datasets/test"
+
+    elif r < 0.2:
+
+        # 移动到 valid 文件夹
+
+        destination = "D:/sj/project/python/ultralytics/datasets/valid"
+
+    else:
+
+        # 移动到 train 文件夹
+
+        destination = "D:/sj/project/python/ultralytics/datasets/train"
+
+
+
+    # 生成目标文件夹中图片的新路径
+
+    image_destination_path = os.path.join(destination, "images", os.path.basename(image_path))
+
+    # 移动图片到目标文件夹
+
+    os.rename(image_path, image_destination_path)
+
+    # 生成目标文件夹中 label 的新路径
+
+    label_destination_path = os.path.join(destination, "labels", os.path.basename(label_path))
+
+    # 移动 label 到目标文件夹
+
+    os.rename(label_path, label_destination_path)
+
+
+
+print("valid images:", valid_images)
+
+#输出有效label路径列表
+
+print("valid labels:", valid_labels)
+
+
+
+
+
+参考：
+
+Ultralytics YOLOv8 Docs（官方的说明文档）
+
+https://docs.ultralytics.com/
+
+ultralytics/README.zh-CN.md at main · ultralytics/ultralytics · GitHub（官方的中文说明页）
+
+https://github.com/ultralytics/ultralytics/blob/main/README.zh-CN.md
+
+
+
+Windows10系统pytorch、cuda11.0、cuDNN安装_吨吨不打野的博客-CSDN博客_cuda版本11一定要安装11吗
+
+https://stitch.blog.csdn.net/article/details/112329058
+
+cuda 和 cudnn 库的卸载与安装 - 知乎
+
+
+
+https://zhuanlan.zhihu.com/p/102966512
+
+
+
+Pytorch环境详细安装教程【Win10+CUDA升级11.6+cudNN+Anaconda3虚拟环境+pycharm】
+
+https://blog.csdn.net/weixin_44842318/article/details/127487476/
